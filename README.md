@@ -2,6 +2,12 @@
 
 TKDebugMenu 是一个 iOS 调试菜单库，用来把各业务模块的调试入口声明成独立的 `DebugMenuItem`，再通过宏自动注册到悬浮调试菜单中。
 
+## 效果预览
+
+| 悬浮入口 | 调试菜单 |
+| --- | --- |
+| <img src="Docs/screenshot1.png" width="260" alt="TKDebugMenu 悬浮入口，iPhone 17 截图"> | <img src="Docs/screenshot2.png" width="260" alt="TKDebugMenu 调试菜单，iPhone 17 截图"> |
+
 ## 核心概念
 
 - `DebugMenuItem`：一个菜单声明单元，类似“一个模块贡献一组调试菜单”。
