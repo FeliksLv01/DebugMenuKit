@@ -1,23 +1,136 @@
 import UIKit
 
-final class DebugAssistiveTouchWindow: UIWindow {
-    private enum Constants {
-        static let shrinkSize = CGSize(width: 60, height: 60)
-        static let margin: CGFloat = 4
-        static let positionYKey = "DebugAssistiveTouch.positionY"
-        static let isRightKey = "DebugAssistiveTouch.isRight"
+private enum DebugAssistiveTouchLayout {
+    static let shrinkSize = CGSize(width: 60, height: 60)
+    static let margin: CGFloat = 4
+    static let positionYKey = "DebugAssistiveTouch.positionY"
+    static let isRightKey = "DebugAssistiveTouch.isRight"
+}
+
+final class DebugAssistiveTouchFloatingView: UIView {
+    private let touch: DebugAssistiveTouch
+    private let shrinkView = DebugAssistiveTouchShrinkView()
+    private var startPoint = CGPoint.zero
+    private var shrinkFrame = CGRect(origin: CGPoint(x: 8, y: 200), size: DebugAssistiveTouchLayout.shrinkSize)
+    private var isShrinkAnchoredRight = false
+    private var lastBoundsSize = CGSize.zero
+    private var didInitializeProperty = false
+
+    init(touch: DebugAssistiveTouch) {
+        self.touch = touch
+        super.init(frame: .zero)
+
+        backgroundColor = .clear
+        initializeViews()
     }
 
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        initializePropertyIfNeeded()
+        updateShrinkFrameForCurrentBoundsIfNeeded()
+        shrinkView.frame = shrinkFrame
+    }
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard shrinkView.frame.contains(point) else {
+            return nil
+        }
+
+        let shrinkPoint = convert(point, to: shrinkView)
+        return shrinkView.hitTest(shrinkPoint, with: event)
+    }
+
+    private func initializePropertyIfNeeded() {
+        guard !didInitializeProperty, bounds.size != .zero else {
+            return
+        }
+
+        didInitializeProperty = true
+        let hasSavedY = UserDefaults.standard.object(forKey: DebugAssistiveTouchLayout.positionYKey) != nil
+        let y = hasSavedY ? CGFloat(UserDefaults.standard.double(forKey: DebugAssistiveTouchLayout.positionYKey)) : shrinkFrame.minY
+        isShrinkAnchoredRight = UserDefaults.standard.bool(forKey: DebugAssistiveTouchLayout.isRightKey)
+        let x = isShrinkAnchoredRight
+            ? bounds.width - DebugAssistiveTouchLayout.shrinkSize.width - DebugAssistiveTouchLayout.margin
+            : DebugAssistiveTouchLayout.margin
+        shrinkFrame = CGRect(x: x, y: y, width: DebugAssistiveTouchLayout.shrinkSize.width, height: DebugAssistiveTouchLayout.shrinkSize.height)
+        if !hasSavedY {
+            shrinkFrame.origin.y = 200
+        }
+        shrinkFrame = clampedShrinkFrame(shrinkFrame)
+    }
+
+    private func initializeViews() {
+        shrinkView.frame = shrinkFrame
+        addSubview(shrinkView)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleShrinkTap))
+        shrinkView.addGestureRecognizer(tap)
+
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleShrinkPan(_:)))
+        shrinkView.addGestureRecognizer(pan)
+    }
+
+    private func updateShrinkFrameForCurrentBoundsIfNeeded() {
+        guard lastBoundsSize != bounds.size else {
+            return
+        }
+
+        lastBoundsSize = bounds.size
+        shrinkFrame = clampedShrinkFrame(shrinkFrame)
+    }
+
+    private func clampedShrinkFrame(_ frame: CGRect) -> CGRect {
+        let maxY = max(0, bounds.height - DebugAssistiveTouchLayout.shrinkSize.height - safeAreaInsets.bottom)
+        let y = min(max(safeAreaInsets.top, frame.minY), maxY)
+        let left = isShrinkAnchoredRight
+            ? max(DebugAssistiveTouchLayout.margin, bounds.width - DebugAssistiveTouchLayout.shrinkSize.width - DebugAssistiveTouchLayout.margin)
+            : DebugAssistiveTouchLayout.margin
+        return CGRect(x: left, y: y, width: DebugAssistiveTouchLayout.shrinkSize.width, height: DebugAssistiveTouchLayout.shrinkSize.height)
+    }
+
+    @objc private func handleShrinkTap() {
+        touch.expand(from: shrinkFrame)
+    }
+
+    @objc private func handleShrinkPan(_ pan: UIPanGestureRecognizer) {
+        switch pan.state {
+        case .began:
+            startPoint = pan.location(in: self)
+        case .changed:
+            let location = pan.location(in: self)
+            shrinkView.frame.origin.x += location.x - startPoint.x
+            shrinkView.frame.origin.y += location.y - startPoint.y
+            startPoint = location
+        default:
+            isShrinkAnchoredRight = shrinkView.frame.midX > bounds.midX
+            shrinkFrame = clampedShrinkFrame(shrinkView.frame)
+            UserDefaults.standard.set(Double(shrinkFrame.minY), forKey: DebugAssistiveTouchLayout.positionYKey)
+            UserDefaults.standard.set(isShrinkAnchoredRight, forKey: DebugAssistiveTouchLayout.isRightKey)
+            shrinkView.frame = shrinkFrame
+        }
+    }
+}
+
+final class DebugAssistiveTouchWindow: UIWindow {
     private let touch: DebugAssistiveTouch
     private let coverView = UIView()
     private let panelView: DebugAssistiveTouchPanelView
     private let shrinkView = DebugAssistiveTouchShrinkView()
     private var isExpanded = false
-    private var startPoint = CGPoint.zero
-    private var shrinkFrame = CGRect(origin: CGPoint(x: 8, y: 200), size: Constants.shrinkSize)
-    private var isShrinkAnchoredRight = false
-    private var lastBoundsSize = CGSize.zero
+    private var collapsedFrame = CGRect(origin: CGPoint(x: 8, y: 200), size: DebugAssistiveTouchLayout.shrinkSize)
     private weak var previousKeyWindow: UIWindow?
+    private lazy var debugRootViewController = DebugAssistiveTouchRootViewController(window: self)
+
+    var onDidShrink: (() -> Void)?
+
+    var orientationSourceViewController: UIViewController? {
+        previousKeyWindow?.rootViewController ?? touch.hostRootViewController
+    }
 
     override var canBecomeKey: Bool {
         isExpanded
@@ -28,16 +141,13 @@ final class DebugAssistiveTouchWindow: UIWindow {
         self.panelView = DebugAssistiveTouchPanelView(touch: touch)
         super.init(windowScene: windowScene)
 
-        rootViewController = DebugAssistiveTouchRootViewController(touch: touch)
         frame = windowScene.coordinateSpace.bounds
         backgroundColor = .clear
-        initializeProperty()
+        isHidden = true
         initializeViews()
 
         panelView.alpha = 0
-        panelView.frame = shrinkFrame
-        shrinkView.alpha = 1
-        shrinkView.frame = panelView.frame
+        panelView.frame = collapsedFrame
     }
 
     @available(*, unavailable)
@@ -48,48 +158,49 @@ final class DebugAssistiveTouchWindow: UIWindow {
     override func layoutSubviews() {
         super.layoutSubviews()
         updateFrameForCurrentSceneIfNeeded()
-        updateShrinkFrameForCurrentBoundsIfNeeded()
         coverView.frame = bounds
         if isExpanded {
             panelView.frame = expandedFrame()
         } else {
-            shrinkView.frame = shrinkFrame
-            panelView.frame = shrinkFrame
+            shrinkView.frame = collapsedFrame
         }
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        if isExpanded {
-            if panelView.frame.contains(point) {
-                let panelPoint = convert(point, to: panelView)
-                return panelView.hitTest(panelPoint, with: event)
-            }
-            let coverPoint = convert(point, to: coverView)
-            return coverView.hitTest(coverPoint, with: event)
+        guard isExpanded else {
+            return nil
         }
 
-        if shrinkView.frame.contains(point) {
-            let shrinkPoint = convert(point, to: shrinkView)
-            return shrinkView.hitTest(shrinkPoint, with: event)
+        if panelView.frame.contains(point) {
+            let panelPoint = convert(point, to: panelView)
+            return panelView.hitTest(panelPoint, with: event)
         }
 
-        return nil
+        let coverPoint = convert(point, to: coverView)
+        return coverView.hitTest(coverPoint, with: event)
     }
 
-    func expand() {
+    func expand(from shrinkFrame: CGRect) {
         guard !isExpanded else {
             return
         }
 
+        collapsedFrame = shrinkFrame
         previousKeyWindow = windowScene?.windows.first { $0.isKeyWindow && $0 !== self }
         isExpanded = true
+        rootViewController = debugRootViewController
+        isHidden = false
         makeKey()
-        panelView.frame = expandedFrame()
+        setNeedsLayout()
+        layoutIfNeeded()
+        panelView.frame = collapsedFrame
+        shrinkView.frame = collapsedFrame
+        shrinkView.alpha = 1
         UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
             self.coverView.alpha = 1
             self.panelView.alpha = 1
+            self.panelView.frame = self.expandedFrame()
             self.shrinkView.alpha = 0
-            self.shrinkView.frame = self.shrinkFrame
         } completion: { _ in
             self.panelView.refresh()
         }
@@ -102,34 +213,28 @@ final class DebugAssistiveTouchWindow: UIWindow {
         }
 
         isExpanded = false
+        onDidShrink?()
         previousKeyWindow?.makeKey()
-        UIView.animate(withDuration: 0.4, delay: 0, options: .curveEaseOut) {
+        UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
             self.coverView.alpha = 0
             self.panelView.alpha = 0
-            self.shrinkView.alpha = 1
-            self.shrinkView.frame = self.shrinkFrame
         } completion: { _ in
-            self.panelView.frame = self.shrinkFrame
+            self.isHidden = true
+            self.rootViewController = nil
             self.previousKeyWindow = nil
+            self.panelView.frame = self.collapsedFrame
+            self.panelView.alpha = 1
         }
-    }
-
-    private func initializeProperty() {
-        let hasSavedY = UserDefaults.standard.object(forKey: Constants.positionYKey) != nil
-        let y = hasSavedY ? CGFloat(UserDefaults.standard.double(forKey: Constants.positionYKey)) : shrinkFrame.minY
-        isShrinkAnchoredRight = UserDefaults.standard.bool(forKey: Constants.isRightKey)
-        let x = isShrinkAnchoredRight ? bounds.width - Constants.shrinkSize.width - Constants.margin : Constants.margin
-        shrinkFrame = CGRect(x: x, y: y, width: Constants.shrinkSize.width, height: Constants.shrinkSize.height)
-        if !hasSavedY {
-            shrinkFrame.origin.y = 200
-        }
-        shrinkFrame = clampedShrinkFrame(shrinkFrame)
     }
 
     private func initializeViews() {
         coverView.backgroundColor = UIColor.black.withAlphaComponent(0.08)
         coverView.alpha = 0
         addSubview(coverView)
+
+        shrinkView.alpha = 0
+        shrinkView.frame = collapsedFrame
+        addSubview(shrinkView)
 
         panelView.alpha = 0
         panelView.layer.masksToBounds = true
@@ -141,15 +246,6 @@ final class DebugAssistiveTouchWindow: UIWindow {
 
         let coverTap = UITapGestureRecognizer(target: self, action: #selector(handleCoverTap))
         coverView.addGestureRecognizer(coverTap)
-
-        shrinkView.frame = shrinkFrame
-        addSubview(shrinkView)
-
-        let tap = UITapGestureRecognizer(target: self, action: #selector(handleShrinkTap))
-        shrinkView.addGestureRecognizer(tap)
-
-        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleShrinkPan(_:)))
-        shrinkView.addGestureRecognizer(pan)
     }
 
     private func expandedFrame() -> CGRect {
@@ -171,57 +267,20 @@ final class DebugAssistiveTouchWindow: UIWindow {
         frame = sceneBounds
     }
 
-    private func updateShrinkFrameForCurrentBoundsIfNeeded() {
-        guard lastBoundsSize != bounds.size else {
-            return
-        }
-
-        lastBoundsSize = bounds.size
-        shrinkFrame = clampedShrinkFrame(shrinkFrame)
-    }
-
-    private func clampedShrinkFrame(_ frame: CGRect) -> CGRect {
-        let maxY = max(0, bounds.height - Constants.shrinkSize.height - safeAreaInsets.bottom)
-        let y = min(max(safeAreaInsets.top, frame.minY), maxY)
-        let left = isShrinkAnchoredRight
-            ? max(Constants.margin, bounds.width - Constants.shrinkSize.width - Constants.margin)
-            : Constants.margin
-        return CGRect(x: left, y: y, width: Constants.shrinkSize.width, height: Constants.shrinkSize.height)
-    }
-
-    @objc private func handleShrinkTap() {
-        expand()
-    }
-
     @objc private func handleCoverTap() {
         shrink()
     }
 
-    @objc private func handleShrinkPan(_ pan: UIPanGestureRecognizer) {
-        switch pan.state {
-        case .began:
-            startPoint = pan.location(in: self)
-        case .changed:
-            let location = pan.location(in: self)
-            shrinkView.frame.origin.x += location.x - startPoint.x
-            shrinkView.frame.origin.y += location.y - startPoint.y
-            startPoint = location
-        default:
-            isShrinkAnchoredRight = shrinkView.frame.midX > bounds.midX
-            shrinkFrame = clampedShrinkFrame(shrinkView.frame)
-            UserDefaults.standard.set(Double(shrinkFrame.minY), forKey: Constants.positionYKey)
-            UserDefaults.standard.set(isShrinkAnchoredRight, forKey: Constants.isRightKey)
-            isExpanded = true
-            shrink()
-        }
+    @objc func lookin_shouldCaptureImage() -> Bool {
+        return false
     }
 }
 
 private final class DebugAssistiveTouchRootViewController: UIViewController {
-    private unowned let touch: DebugAssistiveTouch
+    private unowned let debugWindow: DebugAssistiveTouchWindow
 
-    init(touch: DebugAssistiveTouch) {
-        self.touch = touch
+    init(window: DebugAssistiveTouchWindow) {
+        self.debugWindow = window
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -231,27 +290,21 @@ private final class DebugAssistiveTouchRootViewController: UIViewController {
     }
 
     override var shouldAutorotate: Bool {
-        true
+        debugWindow.orientationSourceViewController?.shouldAutorotate ?? false
     }
 
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        guard let hostRootViewController = touch.hostRootViewController else {
-            return view.window?.windowScene?.interfaceOrientation.debugMenuInterfaceOrientationMask ?? .portrait
+        if let mask = debugWindow.orientationSourceViewController?.supportedInterfaceOrientations,
+           !mask.isEmpty {
+            return mask
         }
 
-        if hostRootViewController.shouldAutorotate {
-            return UIDevice.current.userInterfaceIdiom == .pad ? .all : .allButUpsideDown
-        }
-
-        let mask = hostRootViewController.supportedInterfaceOrientations
-        return mask.isEmpty
-            ? view.window?.windowScene?.interfaceOrientation.debugMenuInterfaceOrientationMask ?? .portrait
-            : mask
+        return debugWindow.windowScene?.interfaceOrientation.debugMenuInterfaceOrientationMask ?? .portrait
     }
 
     override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation {
-        touch.hostRootViewController?.preferredInterfaceOrientationForPresentation
-            ?? view.window?.windowScene?.interfaceOrientation
+        debugWindow.orientationSourceViewController?.preferredInterfaceOrientationForPresentation
+            ?? debugWindow.windowScene?.interfaceOrientation
             ?? .portrait
     }
 }

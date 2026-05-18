@@ -8,6 +8,7 @@ final class DebugAssistiveTouch {
     let rootNode = DebugMenuNode(title: "root", identifier: "root")
 
     private var window: DebugAssistiveTouchWindow?
+    private var floatingView: DebugAssistiveTouchFloatingView?
 
     private init() {}
 
@@ -20,32 +21,63 @@ final class DebugAssistiveTouch {
     }
 
     func show() {
-        if let window {
-            window.isHidden = false
-            window.setNeedsLayout()
-            window.layoutIfNeeded()
+        showFloatingView()
+    }
+
+    func expand(from shrinkFrame: CGRect) {
+        guard let windowScene = currentWindowScene() else {
             return
         }
 
-        guard let windowScene = currentWindowScene()
-        else {
-            return
+        let window: DebugAssistiveTouchWindow
+        if let existingWindow = self.window {
+            window = existingWindow
+        } else {
+            window = DebugAssistiveTouchWindow(windowScene: windowScene, touch: self)
+            window.windowLevel = .alert + 1
+            window.onDidShrink = { [weak self] in
+                self?.showFloatingView()
+            }
+            self.window = window
         }
 
-        let window = DebugAssistiveTouchWindow(windowScene: windowScene, touch: self)
-        window.windowLevel = .alert + 1
-        window.isHidden = false
-        window.setNeedsLayout()
-        window.layoutIfNeeded()
-        self.window = window
+        floatingView?.isHidden = true
+        window.expand(from: shrinkFrame)
     }
 
     func hide() {
         window?.isHidden = true
+        floatingView?.removeFromSuperview()
+        floatingView = nil
     }
 
     func register(_ items: [DebugMenuNode]) {
         append(items, to: rootNode)
+    }
+
+    private func showFloatingView() {
+        guard let hostWindow = hostWindow() else {
+            return
+        }
+
+        let floatingView: DebugAssistiveTouchFloatingView
+        if let existingView = self.floatingView {
+            floatingView = existingView
+        } else {
+            floatingView = DebugAssistiveTouchFloatingView(touch: self)
+            self.floatingView = floatingView
+        }
+
+        if floatingView.superview !== hostWindow {
+            floatingView.removeFromSuperview()
+            floatingView.frame = hostWindow.bounds
+            floatingView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            hostWindow.addSubview(floatingView)
+        }
+
+        floatingView.isHidden = false
+        floatingView.setNeedsLayout()
+        floatingView.layoutIfNeeded()
     }
 
     private func hostTopViewController() -> UIViewController? {
@@ -57,13 +89,14 @@ final class DebugAssistiveTouch {
             return nil
         }
 
-        return windowScene.windows.first { candidate in
+        let visibleHostWindows = windowScene.windows.filter { candidate in
             candidate !== window
                 && !candidate.isHidden
                 && candidate.alpha > 0
                 && candidate.windowLevel == .normal
                 && candidate.rootViewController != nil
         }
+        return visibleHostWindows.first { $0.isKeyWindow } ?? visibleHostWindows.first
     }
 
     private func currentWindowScene() -> UIWindowScene? {
