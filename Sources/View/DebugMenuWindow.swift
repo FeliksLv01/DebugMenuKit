@@ -114,6 +114,10 @@ final class DebugAssistiveTouchFloatingView: UIView {
             shrinkView.frame = shrinkFrame
         }
     }
+
+    @objc func lookin_shouldCaptureImage() -> Bool {
+        return false
+    }
 }
 
 final class DebugAssistiveTouchWindow: UIWindow {
