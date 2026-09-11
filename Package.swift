@@ -14,6 +14,10 @@ let package = Package(
             name: "DebugMenuKit",
             targets: ["DebugMenuKit"]
         ),
+        .library(
+            name: "DebugMenuKitMacro",
+            targets: ["DebugMenuKitMacro"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax.git", from: "603.0.0"),
