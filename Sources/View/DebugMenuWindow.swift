@@ -118,6 +118,10 @@ final class DebugAssistiveTouchFloatingView: UIView {
     @objc func lookin_shouldCaptureImage() -> Bool {
         return false
     }
+
+    @objc func lookin_shouldHide() -> Bool {
+        return true
+    }
 }
 
 final class DebugAssistiveTouchWindow: UIWindow {
@@ -127,17 +131,16 @@ final class DebugAssistiveTouchWindow: UIWindow {
     private let shrinkView = DebugAssistiveTouchShrinkView()
     private var isExpanded = false
     private var collapsedFrame = CGRect(origin: CGPoint(x: 8, y: 200), size: DebugAssistiveTouchLayout.shrinkSize)
-    private weak var previousKeyWindow: UIWindow?
     private lazy var debugRootViewController = DebugAssistiveTouchRootViewController(window: self)
 
     var onDidShrink: (() -> Void)?
 
     var orientationSourceViewController: UIViewController? {
-        previousKeyWindow?.rootViewController ?? touch.hostRootViewController
+        touch.hostRootViewController
     }
 
     override var canBecomeKey: Bool {
-        isExpanded
+        false
     }
 
     init(windowScene: UIWindowScene, touch: DebugAssistiveTouch) {
@@ -190,11 +193,9 @@ final class DebugAssistiveTouchWindow: UIWindow {
         }
 
         collapsedFrame = shrinkFrame
-        previousKeyWindow = windowScene?.windows.first { $0.isKeyWindow && $0 !== self }
         isExpanded = true
         rootViewController = debugRootViewController
         isHidden = false
-        makeKey()
         setNeedsLayout()
         layoutIfNeeded()
         panelView.frame = collapsedFrame
@@ -218,17 +219,30 @@ final class DebugAssistiveTouchWindow: UIWindow {
 
         isExpanded = false
         onDidShrink?()
-        previousKeyWindow?.makeKey()
         UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
             self.coverView.alpha = 0
             self.panelView.alpha = 0
         } completion: { _ in
             self.isHidden = true
             self.rootViewController = nil
-            self.previousKeyWindow = nil
             self.panelView.frame = self.collapsedFrame
             self.panelView.alpha = 1
         }
+    }
+
+    func hide() {
+        panelView.endEditing(true)
+        guard isExpanded else {
+            isHidden = true
+            return
+        }
+
+        isExpanded = false
+        rootViewController = nil
+        coverView.alpha = 0
+        panelView.alpha = 1
+        shrinkView.alpha = 0
+        isHidden = true
     }
 
     private func initializeViews() {
@@ -277,6 +291,10 @@ final class DebugAssistiveTouchWindow: UIWindow {
 
     @objc func lookin_shouldCaptureImage() -> Bool {
         return false
+    }
+
+    @objc func lookin_shouldHide() -> Bool {
+        return true
     }
 }
 

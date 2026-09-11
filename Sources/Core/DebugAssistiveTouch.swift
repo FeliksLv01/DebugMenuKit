@@ -46,7 +46,7 @@ final class DebugAssistiveTouch {
     }
 
     func hide() {
-        window?.isHidden = true
+        window?.hide()
         floatingView?.removeFromSuperview()
         floatingView = nil
     }

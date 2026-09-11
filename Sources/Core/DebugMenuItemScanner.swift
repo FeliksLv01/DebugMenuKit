@@ -22,7 +22,7 @@ enum DebugMenuItemScanner {
 
     private static func readSection(header: UnsafePointer<mach_header_64>) -> [any DebugMenuItem.Type] {
         var size: UInt = 0
-        guard let sectionData = getsectiondata(header, "__DATA_CONST", "__tk_debug_menu", &size),
+        guard let sectionData = getsectiondata(header, "__DATA_CONST", "__debug_menu_kit", &size),
               size > 0 else {
             return []
         }

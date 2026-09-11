@@ -26,16 +26,16 @@ jobs:
         run: |
           set -euo pipefail
           TAG_NAME="${GITHUB_REF_NAME}"
-          PODSPEC_VERSION="$(ruby -e "body = File.read('TKDebugMenu.podspec'); puts body[/s\.version\s*=\s*['\"]([^'\"]+)['\"]/, 1]")"
+          PODSPEC_VERSION="$(ruby -e "body = File.read('DebugMenuKit.podspec'); puts body[/s\.version\s*=\s*['\"]([^'\"]+)['\"]/, 1]")"
 
           if [[ -z "${PODSPEC_VERSION}" ]]; then
-            echo "Failed to read s.version from TKDebugMenu.podspec"
+            echo "Failed to read s.version from DebugMenuKit.podspec"
             exit 1
           fi
 
           if [[ "${TAG_NAME}" != "${PODSPEC_VERSION}" ]]; then
-            echo "Tag ${TAG_NAME} does not match TKDebugMenu.podspec version ${PODSPEC_VERSION}"
-            echo "TKDebugMenu.podspec uses :tag => s.version.to_s, so the release tag must be exactly ${PODSPEC_VERSION}."
+            echo "Tag ${TAG_NAME} does not match DebugMenuKit.podspec version ${PODSPEC_VERSION}"
+            echo "DebugMenuKit.podspec uses :tag => s.version.to_s, so the release tag must be exactly ${PODSPEC_VERSION}."
             exit 1
           fi
 
@@ -74,4 +74,4 @@ jobs:
             exit 1
           fi
           pod repo add tkspecs "https://x-access-token:${TKSPECS_TOKEN}@github.com/TokenTeamiOS/TKSpecs.git"
-          pod repo push tkspecs TKDebugMenu.podspec --allow-warnings
+          pod repo push tkspecs DebugMenuKit.podspec --allow-warnings
