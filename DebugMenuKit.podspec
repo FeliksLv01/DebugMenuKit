@@ -12,7 +12,7 @@ Pod::Spec.new do |s|
 
   s.ios.deployment_target = '15.0'
   s.swift_version = '6.0'
-  s.source_files = 'Sources/**/*.swift', 'DebugMenuKitMacros/Sources/DebugMenuKitMacro/**/*.swift'
+  s.source_files = 'Sources/DebugMenuKit/**/*.swift', 'Sources/DebugMenuKitMacro/**/*.swift'
   s.preserve_paths = 'Prebuilt/DebugMenuKitMacros'
   s.pod_target_xcconfig = { 'OTHER_SWIFT_FLAGS' => pod_macro_flags }
   s.user_target_xcconfig = { 'OTHER_SWIFT_FLAGS' => user_macro_flags }

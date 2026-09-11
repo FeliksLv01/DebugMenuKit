@@ -26,17 +26,17 @@ let package = Package(
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
             ],
-            path: "DebugMenuKitMacros/Sources/DebugMenuKitMacros"
+            path: "Sources/DebugMenuKitMacros"
         ),
         .target(
             name: "DebugMenuKitMacro",
             dependencies: ["DebugMenuKitMacros"],
-            path: "DebugMenuKitMacros/Sources/DebugMenuKitMacro"
+            path: "Sources/DebugMenuKitMacro"
         ),
         .target(
             name: "DebugMenuKit",
             dependencies: ["DebugMenuKitMacro"],
-            path: "Sources"
+            path: "Sources/DebugMenuKit"
         ),
         .testTarget(
             name: "DebugMenuKitTests",

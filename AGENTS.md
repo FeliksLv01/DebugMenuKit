@@ -7,15 +7,15 @@ DebugMenuKit is an iOS-only floating debug menu library. Keep the public API foc
 ## Package integrations
 
 1. Swift Package Manager and CocoaPods must compile the same runtime sources under `Sources`.
-2. `Package.swift` must expose the `DebugMenuKit` library product and use the local `DebugMenuKitMacros` package.
+2. `Package.swift` must expose the `DebugMenuKit` library product and keep macro targets in the root package.
 3. `DebugMenuKit.podspec` must expose the same module name and load `Prebuilt/DebugMenuKitMacros`.
 4. Keep the package name, pod name, README installation examples, release workflow, and version tags consistent.
 5. Do not commit generated Xcode projects, workspaces, DerivedData, or SwiftPM build directories.
 
 ## Macros and Git LFS
 
-1. Macro declarations belong in `DebugMenuKitMacros/Sources/DebugMenuKitMacro`.
-2. Compiler-plugin implementations belong in `DebugMenuKitMacros/Sources/DebugMenuKitMacros`.
+1. Macro declarations belong in `Sources/DebugMenuKitMacro`.
+2. Compiler-plugin implementations belong in `Sources/DebugMenuKitMacros`.
 3. `DebugMenuKitPlugin` must list every public macro implementation.
 4. After changing macro implementation code, run `./build.sh`.
 5. `Prebuilt/DebugMenuKitMacros` must remain a Git LFS object. Check it with `git check-attr filter -- Prebuilt/DebugMenuKitMacros` and `git lfs status` before release.

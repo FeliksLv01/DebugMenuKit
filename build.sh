@@ -2,9 +2,9 @@
 
 set -e
 
-cd "$(dirname "$0")/DebugMenuKitMacros"
-swift build -c release -Xswiftc -Osize
-bin_path_root=$(swift build -c release --show-bin-path)
+cd "$(dirname "$0")"
+swift build -c release --target DebugMenuKitMacros -Xswiftc -Osize
+bin_path_root=$(swift build -c release --target DebugMenuKitMacros --show-bin-path)
 binary=$(find "${bin_path_root}" -name "DebugMenuKitMacros-tool" -type f -not -path "*.dSYM*" | head -n 1)
 
 if [ -z "${binary}" ]; then
@@ -16,8 +16,8 @@ if [ -z "${binary}" ]; then
     exit 1
 fi
 
-mkdir -p ../Prebuilt
-cp "${binary}" ../Prebuilt/DebugMenuKitMacros
-chmod u+x ../Prebuilt/DebugMenuKitMacros
-strip -x ../Prebuilt/DebugMenuKitMacros
+mkdir -p Prebuilt
+cp "${binary}" Prebuilt/DebugMenuKitMacros
+chmod u+x Prebuilt/DebugMenuKitMacros
+strip -x Prebuilt/DebugMenuKitMacros
 echo "Built Prebuilt/DebugMenuKitMacros"
