@@ -95,7 +95,7 @@ The main public API names such as `DebugMenu`, `DebugMenuItem`, and `DebugMenuNo
 
 ## Development
 
-Build the macro executable for CocoaPods with `./build.sh`. Before committing a release, verify the generated executable is stored as a Git LFS object. SwiftPM uses the local `DebugMenuKitMacros` package.
+Build the macro executable for CocoaPods with `./build.sh`. Before committing a release, verify the generated executable is stored as a Git LFS object. SwiftPM builds the macro targets from the root package.
 
 ## License
 
