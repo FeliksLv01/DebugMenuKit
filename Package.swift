@@ -14,13 +14,13 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(path: "Macros"),
+        .package(path: "DebugMenuKitMacros"),
     ],
     targets: [
         .target(
             name: "DebugMenuKit",
             dependencies: [
-                .product(name: "DebugMenuKitMacro", package: "macros"),
+                .product(name: "DebugMenuKitMacro", package: "debugmenukitmacros"),
             ],
             path: "Sources"
         ),

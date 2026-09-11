@@ -2,7 +2,7 @@
 
 set -e
 
-cd "$(dirname "$0")/Macros"
+cd "$(dirname "$0")/DebugMenuKitMacros"
 swift build -c release -Xswiftc -Osize
 bin_path_root=$(swift build -c release --show-bin-path)
 binary=$(find "${bin_path_root}" -name "DebugMenuKitMacros-tool" -type f -not -path "*.dSYM*" | head -n 1)

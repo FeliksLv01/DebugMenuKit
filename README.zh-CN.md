@@ -101,7 +101,7 @@ import DebugMenuKit
 ./build.sh
 ```
 
-提交发布版本前，请确认生成的插件是 Git LFS 对象。SwiftPM 使用仓库内的 `Macros` package，CocoaPods 使用生成的预编译插件。
+提交发布版本前，请确认生成的插件是 Git LFS 对象。SwiftPM 使用仓库内的 `DebugMenuKitMacros` package，CocoaPods 使用生成的预编译插件。
 
 ## License
 
