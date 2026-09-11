@@ -28,6 +28,18 @@ pod 'DebugMenuKit'
 
 The CocoaPods integration loads the macro compiler plugin from `Prebuilt/DebugMenuKitMacros`. This executable is tracked with Git LFS and must be present when publishing a release.
 
+If another Pod target uses `@DebugMenuEntry` through a direct or transitive dependency on DebugMenuKit, copy `Scripts/debug_menu_kit_swift_flags.rb` into your application repository and load it from the Podfile:
+
+```ruby
+require_relative 'Scripts/debug_menu_kit_swift_flags'
+
+post_install do |installer|
+  inject_debug_menu_kit_swift_flags_if_needed(installer)
+end
+```
+
+The script adds the compiler-plugin flags only to Pod targets that depend on DebugMenuKit. The application target receives the same flags from the podspec.
+
 ## Usage
 
 ```swift

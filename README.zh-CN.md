@@ -28,6 +28,18 @@ pod 'DebugMenuKit'
 
 CocoaPods 会从 `Prebuilt/DebugMenuKitMacros` 加载宏编译器插件。该文件使用 Git LFS 管理，发布版本时必须确保它存在并已上传到 LFS 服务端。
 
+如果其他 Pod target 通过直接或传递依赖使用 `@DebugMenuEntry`，请把 `Scripts/debug_menu_kit_swift_flags.rb` 复制到应用仓库，并在 Podfile 中加载：
+
+```ruby
+require_relative 'Scripts/debug_menu_kit_swift_flags'
+
+post_install do |installer|
+  inject_debug_menu_kit_swift_flags_if_needed(installer)
+end
+```
+
+脚本只会为直接或间接依赖 DebugMenuKit 的 Pod target 注入编译器插件参数；应用 target 使用的同类参数由 podspec 提供。
+
 ## 基本用法
 
 ```swift
@@ -101,7 +113,7 @@ import DebugMenuKit
 ./build.sh
 ```
 
-提交发布版本前，请确认生成的插件是 Git LFS 对象。SwiftPM 直接从根目录 `Package.swift` 构建 `Sources/DebugMenuKitMacro` 和 `Sources/DebugMenuKitMacros` 中的宏目标，CocoaPods 使用生成的预编译插件。
+提交发布版本前，请确认生成的插件是 Git LFS 对象。SwiftPM 直接从根目录 `Package.swift` 构建 `Sources/DebugMenuKit` 中的公开宏声明和 `Sources/DebugMenuKitMacros` 中的编译器插件，CocoaPods 使用生成的预编译插件。
 
 ## License
 

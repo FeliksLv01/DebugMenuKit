@@ -7,16 +7,13 @@ let package = Package(
     name: "DebugMenuKit",
     platforms: [
         .iOS(.v15),
+        // Required by the SwiftSyntax compiler-plugin host, not runtime support.
         .macOS(.v10_15),
     ],
     products: [
         .library(
             name: "DebugMenuKit",
             targets: ["DebugMenuKit"]
-        ),
-        .library(
-            name: "DebugMenuKitMacro",
-            targets: ["DebugMenuKitMacro"]
         ),
     ],
     dependencies: [
@@ -33,18 +30,20 @@ let package = Package(
             path: "Sources/DebugMenuKitMacros"
         ),
         .target(
-            name: "DebugMenuKitMacro",
-            dependencies: ["DebugMenuKitMacros"],
-            path: "Sources/DebugMenuKitMacro"
-        ),
-        .target(
             name: "DebugMenuKit",
-            dependencies: ["DebugMenuKitMacro"],
+            dependencies: ["DebugMenuKitMacros"],
             path: "Sources/DebugMenuKit"
         ),
         .testTarget(
             name: "DebugMenuKitTests",
             dependencies: ["DebugMenuKit"]
+        ),
+        .testTarget(
+            name: "DebugMenuKitMacrosTests",
+            dependencies: [
+                "DebugMenuKitMacros",
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+            ]
         ),
     ]
 )

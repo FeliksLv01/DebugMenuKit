@@ -3,8 +3,8 @@
 set -e
 
 cd "$(dirname "$0")"
-swift build -c release --target DebugMenuKitMacros -Xswiftc -Osize
-bin_path_root=$(swift build -c release --target DebugMenuKitMacros --show-bin-path)
+swift build -c release --target DebugMenuKitMacrosTests -Xswiftc -Osize
+bin_path_root=$(swift build -c release --target DebugMenuKitMacrosTests --show-bin-path)
 binary=$(find "${bin_path_root}" -name "DebugMenuKitMacros-tool" -type f -not -path "*.dSYM*" | head -n 1)
 
 if [ -z "${binary}" ]; then
