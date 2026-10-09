@@ -57,7 +57,7 @@ module MacroBuild
       destination = File.join(root, 'Prebuilt', module_name)
       FileUtils.mkdir_p(File.dirname(destination))
       FileUtils.cp(candidates.first, destination)
-      capture('strip', '-x', destination)
+      capture('strip', destination)
       File.chmod(0o755, destination)
       raise 'Expected an arm64 executable' unless capture('lipo', '-archs', destination) == 'arm64'
       libraries = capture('otool', '-L', destination)
