@@ -26,9 +26,9 @@ Add this repository as a package dependency and select the `DebugMenuKit` produc
 pod 'DebugMenuKit'
 ```
 
-The CocoaPods integration loads the macro compiler plugin from `Prebuilt/DebugMenuKitMacros`. This executable is tracked with Git LFS and must be present when publishing a release.
+CocoaPods downloads and caches `Prebuilt/DebugMenuKitMacros` using the pinned artifact lock; Git LFS is not required.
 
-If another Pod target uses `@DebugMenuEntry` through a direct or transitive dependency on DebugMenuKit, copy `Scripts/debug_menu_kit_swift_flags.rb` into your application repository and load it from the Podfile:
+If another Pod target uses `@DebugMenuEntry` through a direct or transitive dependency on DebugMenuKit, copy both `Scripts/debug_menu_kit_swift_flags.rb` and `Scripts/consumer_macro_flags.rb` into your application repository and load it from the Podfile:
 
 ```ruby
 require_relative 'Scripts/debug_menu_kit_swift_flags'
@@ -105,9 +105,34 @@ import DebugMenuKit
 
 The main public API names such as `DebugMenu`, `DebugMenuItem`, and `DebugMenuNode` remain unchanged.
 
-## Development
 
-Build the macro executable for CocoaPods with `./build.sh`. Before committing a release, verify the generated executable is stored as a Git LFS object. SwiftPM builds the macro targets from the root package.
+## Macro artifacts and local releases
+
+SwiftPM builds macros from source and never downloads the prebuilt executable. CocoaPods runs `prepare_command` to install the single macOS arm64 plugin pinned by `MacroArtifact.lock.json`. Generated executables are ignored, not stored in Git or LFS.
+
+```sh
+bundle install
+./build.sh
+./verify
+```
+
+The build fingerprint covers macro sources, locked dependencies, build options and the toolchain. Runtime/UI, documentation and test-only changes reuse the artifact. Prebuilts support Apple Silicon only; toolchain upgrades require verification.
+
+The installer validates local bytes, then a shared SHA256-keyed cache at `~/Library/Caches/SwiftMacroArtifacts/v1`, then downloads. Library versions sharing one artifact reuse the cache. Override `SWIFT_MACRO_CACHE_DIR` when needed. Download and checksum failures stop installation.
+
+`./verify` publishes nothing. It always runs macro unit tests, library tests, distribution/cache tests and real SwiftPM/CocoaPods iOS consumer integration tests. CocoaPods tests include direct/transitive macro consumers and runtime menu discovery. Logs, xcresult bundles and JSON reports live under `.distribution/`.
+
+Synchronize the version in the distribution config and podspec, build and commit the artifact lock, then run:
+
+```sh
+./release 0.0.2
+# Also publish the podspec:
+./release 0.0.2 --publish-pod
+```
+
+Release requires a clean committed worktree and never skips tests. It verifies a local candidate, pushes verified sources, publishes/reuses the immutable macro Release, verifies hosted downloads, pushes the library tag, repeats both remote integrations with fresh caches, then creates the library Release. Failures stop publication; tags/assets are never overwritten. A failed remote test can leave the tag in place; retry the same commit.
+
+Development Pods using `:path` do not run `prepare_command`. Run `ruby Scripts/macro_artifact.rb` for a pinned artifact, or `./build.sh` after changing macro implementation. Never commit generated artifacts or verification output.
 
 ## License
 

@@ -1,0 +1,15 @@
+{
+  "library": "DebugMenuKit",
+  "repository": "FeliksLv01/DebugMenuKit",
+  "version": "0.0.2",
+  "ios_deployment_target": "15.0",
+  "consumer_swift_flags": ["-enable-experimental-feature", "SymbolLinkageMarkers"],
+  "build": {
+    "module": "DebugMenuKitMacros",
+    "test_target": "DebugMenuKitMacrosTests",
+    "sources": "Sources/DebugMenuKitMacros",
+    "architecture": "arm64",
+    "configuration": "release",
+    "swift_flags": ["-Osize"]
+  }
+}

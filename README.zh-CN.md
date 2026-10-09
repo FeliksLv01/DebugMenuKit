@@ -20,15 +20,17 @@ DebugMenuKit 是一个轻量级的 iOS 悬浮调试菜单库。各业务模块�
 
 在 Xcode 中添加本仓库作为 package dependency，并选择 `DebugMenuKit` product。
 
+使用 `@DebugMenuEntry` 的 target 需要在 Swift 编译参数中启用 `-enable-experimental-feature SymbolLinkageMarkers`。CocoaPods 通过 podspec 和依赖注入脚本提供这些参数。
+
 ### CocoaPods
 
 ```ruby
 pod 'DebugMenuKit'
 ```
 
-CocoaPods 会从 `Prebuilt/DebugMenuKitMacros` 加载宏编译器插件。该文件使用 Git LFS 管理，发布版本时必须确保它存在并已上传到 LFS 服务端。
+CocoaPods 按产物锁文件下载并缓存 `Prebuilt/DebugMenuKitMacros`，无需 Git LFS。
 
-如果其他 Pod target 通过直接或传递依赖使用 `@DebugMenuEntry`，请把 `Scripts/debug_menu_kit_swift_flags.rb` 复制到应用仓库，并在 Podfile 中加载：
+如果其他 Pod target 通过直接或传递依赖使用 `@DebugMenuEntry`，请把 `Scripts/debug_menu_kit_swift_flags.rb` 和 `Scripts/consumer_macro_flags.rb` 一起复制到应用仓库，并在 Podfile 中加载：
 
 ```ruby
 require_relative 'Scripts/debug_menu_kit_swift_flags'
@@ -105,15 +107,34 @@ import DebugMenuKit
 
 `DebugMenu`、`DebugMenuItem`、`DebugMenuNode` 等主要公开 API 名称保持不变。
 
-## 开发
 
-构建 CocoaPods 使用的宏插件：
+## Macro 产物与本地发布
+
+SwiftPM 从源码构建 Macro，不下载预编译文件。CocoaPods 的 `prepare_command` 按 `MacroArtifact.lock.json` 下载唯一的 macOS arm64 插件到 `Prebuilt/DebugMenuKitMacros`。Git 仓库不保存该产物，也不需要 Git LFS。
 
 ```sh
+bundle install
 ./build.sh
+./verify
 ```
 
-提交发布版本前，请确认生成的插件是 Git LFS 对象。SwiftPM 直接从根目录 `Package.swift` 构建 `Sources/DebugMenuKit` 中的公开宏声明和 `Sources/DebugMenuKitMacros` 中的编译器插件，CocoaPods 使用生成的预编译插件。
+`./build.sh` 根据宏实现、锁定依赖、构建选项和工具链计算指纹；输入未变时复用原产物。普通 UI/运行时代码或文档修改无需重建。预编译插件仅支持 Apple Silicon；Xcode/Swift 升级需要重新验证。
+
+插件先查询本地文件和 `~/Library/Caches/SwiftMacroArtifacts/v1`，按 SHA256 校验后复用。多个库版本引用同一插件时无需重复下载。可用 `SWIFT_MACRO_CACHE_DIR` 更改缓存目录；下载或校验失败会中止安装。
+
+`./verify` 不发布任何内容，但会运行宏单元测试、库测试、下载缓存测试，以及真实 SwiftPM/CocoaPods iOS 消费工程测试；CocoaPods 包含直接和传递依赖的宏展开及菜单自动发现断言。每次运行的日志、结果包和报告保存在 `.distribution/`。
+
+发布前同步 `MacroDistribution.json` 和 podspec 版本，运行构建并提交源码及产物锁文件，然后执行：
+
+```sh
+./release 0.0.2
+# 同时发布 CocoaPods spec：
+./release 0.0.2 --publish-pod
+```
+
+发布要求干净工作区；所有测试不可跳过。流程先验证本地候选，再推送已验证源码并发布/复用 Macro Release，验证真实附件下载，推送库 tag 并重新运行远程双路径测试，最后创建库 Release。失败立即停止，不覆盖 tag 或附件；远程测试失败时 tag 可能已经存在，可在同一提交上重试。
+
+本地 `pod ..., :path => ...` 不运行 `prepare_command`。使用锁定插件时先运行 `ruby Scripts/macro_artifact.rb`；改宏实现时运行 `./build.sh`。插件和 `.distribution/` 都不要提交。
 
 ## License
 
