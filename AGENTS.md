@@ -21,3 +21,5 @@
 - Every xcodebuild uses pipefail, tee logs and xcbeautify; check Simulator availability. CI uploads logs and xcresults on success or failure. Stale results never validate new sources.
 - Numeric version tags create a library Release only after all CI jobs pass. Never add skip-test options or overwrite existing tags/Releases. Preserve historical versions.
 - Use rtk for shell tools, finish with git diff --check, and keep English/Chinese docs synchronized. Never commit generated projects, caches or build output. Do not patch dependency checkouts/generated fixtures to hide failures.
+
+- Use the canonical https://github.com/swiftlang/swift-syntax.git URL in the manifest and lock file; do not mix the legacy apple URL into a consumer dependency graph.
