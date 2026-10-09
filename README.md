@@ -20,6 +20,8 @@ DebugMenuKit is a lightweight iOS floating debug menu. Modules declare their own
 
 Add this repository as a package dependency and select the `DebugMenuKit` product.
 
+Targets expanding `@DebugMenuEntry` must enable `-enable-experimental-feature SymbolLinkageMarkers` in their Swift compiler flags. CocoaPods supplies these flags through the podspec and consumer helper.
+
 ### CocoaPods
 
 ```ruby
