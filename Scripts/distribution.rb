@@ -22,6 +22,7 @@ module MacroDistribution
     MacroBuild.capture('which', 'xcbeautify')
     if release
       raise 'Release requires a clean committed worktree' unless MacroBuild.capture('git', '-C', root, 'status', '--porcelain').empty?
+      MacroBuild.capture('gh', 'auth', 'status', '--hostname', 'github.com')
       origin = MacroBuild.capture('git', '-C', root, 'remote', 'get-url', 'origin').sub(/\.git\z/, '')
       expected = data.fetch('repository')
       raise 'origin does not match configured GitHub repository' unless ["https://github.com/#{expected}", "git@github.com:#{expected}", "ssh://git@github.com/#{expected}"].include?(origin)
@@ -132,6 +133,10 @@ module MacroDistribution
     File.write(File.join(root, '.distribution', state.fetch('report_name')), JSON.pretty_generate(state) + "\n")
   end
 
+  def push(root, ref)
+    MacroBuild.capture('git', '-c', 'credential.helper=', '-c', 'credential.helper=!gh auth git-credential', '-C', root, 'push', 'origin', ref)
+  end
+
   def published_releases(repository)
     JSON.parse(gh('api', '--paginate', '--slurp', "repos/#{repository}/releases?per_page=100")).flatten
   end
@@ -177,12 +182,12 @@ module MacroDistribution
     stage(root, state, 'local-verification') { verify(root) }
     preflight(root, release: true)
     # The source commit must exist remotely before GitHub can tag a macro release.
-    stage(root, state, 'source-push') { MacroBuild.capture('git', '-C', root, 'push', 'origin', 'HEAD') }
+    stage(root, state, 'source-push') { push(root, 'HEAD') }
     stage(root, state, 'macro-release') { publish_macro(root, data, lock) }
     stage(root, state, 'hosted-verification') { verify(root, hosted: true, modes: [:cocoapods]) }
     stage(root, state, 'library-tag') do
       MacroBuild.capture('git', '-C', root, 'tag', version, commit) unless status.success?
-      MacroBuild.capture('git', '-C', root, 'push', 'origin', "refs/tags/#{version}")
+      push(root, "refs/tags/#{version}")
     end
     stage(root, state, 'remote-verification') { verify(root, remote: true) }
     releases = published_releases(data.fetch('repository'))
