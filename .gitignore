@@ -8,3 +8,5 @@ Derived/
 Prebuilt/
 .distribution/
 vendor/bundle/
+
+__pycache__/
